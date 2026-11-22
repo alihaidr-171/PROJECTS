@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 
 from torch.utils.data import TensorDataset, DataLoader
+from torchgen import model
 
 from .config import (
     BATCH_SIZE,
@@ -184,15 +185,21 @@ def train_and_benchmark(
     X_train,
     y_train,
     X_test,
-    y_test
+    y_test,
+    epochs=None
 ):
-
     torch.manual_seed(SEED)
 
     if device_name == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available.")
 
     device = torch.device(device_name)
+
+    if epochs is None:
+       epochs = EPOCHS
+
+    if epochs < 1:
+      raise ValueError("Epochs must be at least 1.")
 
     input_dim = X_train.shape[1]
 
@@ -213,7 +220,7 @@ def train_and_benchmark(
 
     print("Model Parameters:", f"{parameter_count:,}")
     print("Batch Size:", BATCH_SIZE)
-    print("Epochs:", EPOCHS)
+    print("Epochs:", epochs)
     print("===================================")
 
     # Prepare training and testing datasets.
@@ -253,16 +260,23 @@ def train_and_benchmark(
 
     # GPU warm-up
     if device.type == "cuda":
+        
+# Warm-up both CPU and GPU before measurement.
+     model.eval()
 
-        model.eval()
+     warmup_size = min(BATCH_SIZE, len(X_train))
 
-        with torch.no_grad():
+     sample = X_train[:warmup_size].to(
+    device,
+    non_blocking=(device.type == "cuda")
+      )
 
-            sample = X_train[:BATCH_SIZE].to(device)
-            model(sample)
-            del sample
+     with torch.no_grad():
+       model(sample)
 
-        synchronize(device)
+     del sample
+
+    synchronize(device)
 
     # Training loop
     model.train()
@@ -270,7 +284,7 @@ def train_and_benchmark(
     synchronize(device)
     start_time = time.perf_counter()
 
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, epochs + 1):
 
         epoch_start = time.perf_counter()
 
