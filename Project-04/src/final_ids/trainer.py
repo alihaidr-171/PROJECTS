@@ -30,6 +30,42 @@ def synchronize(device):
         torch.cuda.synchronize()
 
 
+# Calculate weights for imbalanced attack categories.
+def calculate_class_weights(y_train, device):
+
+    # Count the training records in each class.
+    class_counts = torch.bincount(
+        y_train,
+        minlength=len(CLASS_NAMES)
+    ).float()
+
+    if torch.any(class_counts == 0):
+        raise ValueError(
+            "A class has no training records."
+        )
+
+    # Square-root inverse frequency weighting.
+    weights = torch.sqrt(
+        class_counts.sum()
+        / (len(CLASS_NAMES) * class_counts)
+    )
+
+    # Normalize the weights.
+    weights = weights / weights.mean()
+
+    print("\nClass Weights")
+
+    for index, class_name in enumerate(CLASS_NAMES):
+
+        print(
+            f"{class_name:<15} "
+            f"Count: {int(class_counts[index]):,} | "
+            f"Weight: {weights[index].item():.4f}"
+        )
+
+    return weights.to(device)
+
+
 # Evaluate model predictions.
 def evaluate_model(model, test_loader, y_test, device):
 
@@ -165,8 +201,12 @@ def train_and_benchmark(
         pin_memory=(device.type == "cuda")
     )
 
-    # Define loss function and optimizer.
-    criterion = nn.CrossEntropyLoss()
+    
+    class_weights = calculate_class_weights(y_train, device)
+
+    criterion = nn.CrossEntropyLoss(
+    weight=class_weights
+)
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
