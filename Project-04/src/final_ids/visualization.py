@@ -4,7 +4,8 @@ Visualization Module for CICIDS2017 IDS.
 
 Creates CPU vs GPU performance comparison charts.
 """
-
+from sklearn.metrics import confusion_matrix
+from .config import DOCS_DIR, CHART_FILENAME, CLASS_NAMES
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -145,6 +146,95 @@ def save_benchmark_chart(
         f"GPU Inference Speedup: "
         f"{inference_speedup:.2f}x"
     )
+
+    return output_path
+
+def save_confusion_matrix(results, output_path=None):
+    """
+    Generate a normalized confusion matrix
+    showing classification performance for each attack class.
+    """
+
+    y_true = results["true_labels"]
+    y_pred = results["predictions"]
+
+    # Convert tensors into NumPy arrays.
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.detach().cpu().numpy()
+
+    # Calculate normalized confusion matrix.
+    matrix = confusion_matrix(
+        y_true,
+        y_pred,
+        labels=list(range(len(CLASS_NAMES))),
+        normalize="true"
+    )
+
+    # Create output location.
+    if output_path is None:
+        output_path = DOCS_DIR / "cicids2017_confusion_matrix.png"
+
+    output_path = Path(output_path)
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Draw confusion matrix.
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    image = ax.imshow(
+        matrix,
+        interpolation="nearest",
+        cmap="Blues",
+        vmin=0,
+        vmax=1
+    )
+
+    fig.colorbar(image, ax=ax, label="Recall proportion")
+
+    ax.set(
+        xticks=range(len(CLASS_NAMES)),
+        yticks=range(len(CLASS_NAMES)),
+        xticklabels=CLASS_NAMES,
+        yticklabels=CLASS_NAMES,
+        xlabel="Predicted Attack Category",
+        ylabel="Actual Attack Category",
+        title="CICIDS2017 Classification Confusion Matrix"
+    )
+
+    plt.setp(
+        ax.get_xticklabels(),
+        rotation=45,
+        ha="right"
+    )
+
+    # Display percentages inside each cell.
+    for i in range(len(CLASS_NAMES)):
+        for j in range(len(CLASS_NAMES)):
+
+            ax.text(
+                j,
+                i,
+                f"{matrix[i, j] * 100:.1f}%",
+                ha="center",
+                va="center",
+                color="black"
+            )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        output_path,
+        dpi=150,
+        bbox_inches="tight"
+    )
+
+    plt.close(fig)
+
+    print("\nConfusion matrix saved:")
+    print(output_path)
 
     return output_path
 

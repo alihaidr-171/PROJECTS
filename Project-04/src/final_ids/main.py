@@ -21,7 +21,10 @@ from .data_loader import prepare_datasets
 
 from .trainer import train_and_benchmark
 
-from .visualization import save_benchmark_chart
+from .visualization import (
+    save_benchmark_chart,
+    save_confusion_matrix
+)
 
 
 # --------------------------------------------------
@@ -238,7 +241,10 @@ def main():
         save_benchmark_chart(
             gpu_results,
             cpu_results
+            
         )
+        save_confusion_matrix(gpu_results)
+        
 
     else:
 

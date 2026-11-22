@@ -333,6 +333,8 @@ def train_and_benchmark(
     print("\nTraining and evaluation completed.")
 
     return {
+        "true_labels": y_test.detach().cpu().clone(),
+        "predictions": results["predictions"],
         "balanced_accuracy": results["balanced_accuracy"],
 "macro_precision": results["macro_precision"],
 "macro_recall": results["macro_recall"],
