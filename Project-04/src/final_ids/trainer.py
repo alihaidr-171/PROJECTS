@@ -325,7 +325,7 @@ def train_and_benchmark(
         average_loss = total_loss / max(total_samples, 1)
 
         print(
-            f"Epoch {epoch}/{EPOCHS} | "
+            f"Epoch {epoch}/{epochs} | "
             f"Loss: {average_loss:.4f} | "
             f"Time: {epoch_time:.2f}s"
         )
