@@ -233,7 +233,7 @@ def train_and_benchmark(
         shuffle=True,
         num_workers=0,
         pin_memory=(device.type == "cuda"),
-        drop_last=(len(train_dataset) > BATCH_SIZE),
+        drop_last=False,
         generator=torch.Generator().manual_seed(SEED)
     )
 

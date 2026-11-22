@@ -14,7 +14,8 @@ from .config import (
     MODEL_DIR,
     MODEL_FILENAME,
     CLASS_NAMES,
-    SEED
+    SEED,
+    EPOCHS
 )
 
 from .data_loader import prepare_datasets
@@ -212,7 +213,8 @@ def main():
             X_train,
             y_train,
             X_test,
-            y_test
+            y_test,
+            epochs=EPOCHS
         )
 
         save_model(
@@ -228,8 +230,16 @@ def main():
         X_train,
         y_train,
         X_test,
-        y_test
+        y_test,
+        epochs=EPOCHS
     )
+    save_model(
+    cpu_results,
+    input_dim,
+    scaler,
+    "cpu"
+)
+    
 
     if gpu_results is not None:
 
@@ -262,7 +272,7 @@ def main():
             scaler,
             "cpu"
         )
-        
+
     save_experiment_report(
     None,
     cpu_results
