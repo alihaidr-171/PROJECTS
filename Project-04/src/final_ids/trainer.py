@@ -332,13 +332,23 @@ def train_and_benchmark(
 
     print("\nTraining and evaluation completed.")
 
+    
     return {
-        "true_labels": y_test.detach().cpu().clone(),
-        "predictions": results["predictions"],
+        "model": model,
+        "params": parameter_count,
+
+        "train_seconds": training_time,
+        "infer_seconds": results["inference_time"],
+        "throughput": results["throughput"],
+        "accuracy": results["accuracy"],
+
         "balanced_accuracy": results["balanced_accuracy"],
-"macro_precision": results["macro_precision"],
-"macro_recall": results["macro_recall"],
-"macro_f1": results["macro_f1"],
-"weighted_f1": results["weighted_f1"],
-        
+        "macro_precision": results["macro_precision"],
+        "macro_recall": results["macro_recall"],
+        "macro_f1": results["macro_f1"],
+        "weighted_f1": results["weighted_f1"],
+
+        "predictions": results["predictions"],
+        "true_labels": y_test.detach().cpu().clone()
     }
+
