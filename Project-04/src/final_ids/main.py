@@ -8,7 +8,7 @@ Dataset: CICIDS2017
 import gc
 import numpy as np
 import torch
-
+from .reporting import save_experiment_report
 from .config import (
     DATA_DIR,
     MODEL_DIR,
@@ -25,6 +25,7 @@ from .visualization import (
     save_benchmark_chart,
     save_confusion_matrix
 )
+
 
 
 # --------------------------------------------------
@@ -169,6 +170,7 @@ def show_comparison(gpu_results, cpu_results):
 
     print("\n========================================")
 
+    
 
 # --------------------------------------------------
 # 4. MAIN FUNCTION
@@ -244,6 +246,10 @@ def main():
             
         )
         save_confusion_matrix(gpu_results)
+        save_experiment_report(
+    gpu_results,
+    cpu_results
+)
         
 
     else:
@@ -256,6 +262,11 @@ def main():
             scaler,
             "cpu"
         )
+        
+    save_experiment_report(
+    None,
+    cpu_results
+)
 
     # Release dataset memory.
     del X_train, y_train
