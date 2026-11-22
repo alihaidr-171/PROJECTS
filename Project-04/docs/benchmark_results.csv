@@ -1,0 +1,2 @@
+device,training_time_seconds,inference_time_seconds,throughput_flows_per_second,accuracy_percent,balanced_accuracy_percent,macro_precision_percent,macro_recall_percent,macro_f1_percent,weighted_f1_percent,model_parameters
+CPU,5629.323308999999,35.237368299999616,16050.460839892126,96.16161223248511,80.90714814894623,63.30428864561487,80.90714814894623,64.2656282027398,95.8528139169036,1229831
