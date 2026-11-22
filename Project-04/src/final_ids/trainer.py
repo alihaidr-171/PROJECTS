@@ -5,6 +5,11 @@ Training and Benchmarking Module
 Trains DeepResIDSNet on CPU and GPU,
 then compares training and inference performance.
 """
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    precision_recall_fscore_support
+)
 
 import time
 import torch
@@ -31,42 +36,35 @@ def synchronize(device):
 
 
 # Calculate weights for imbalanced attack categories.
+
 def calculate_class_weights(y_train, device):
 
-    # Count the training records in each class.
     class_counts = torch.bincount(
-        y_train,
+        y_train.cpu(),
         minlength=len(CLASS_NAMES)
     ).float()
 
     if torch.any(class_counts == 0):
-        raise ValueError(
-            "A class has no training records."
-        )
+        raise ValueError("A class has no training records.")
 
-    # Square-root inverse frequency weighting.
     weights = torch.sqrt(
         class_counts.sum()
         / (len(CLASS_NAMES) * class_counts)
     )
 
-    # Normalize the weights.
     weights = weights / weights.mean()
 
     print("\nClass Weights")
 
-    for index, class_name in enumerate(CLASS_NAMES):
-
+    for index, name in enumerate(CLASS_NAMES):
         print(
-            f"{class_name:<15} "
-            f"Count: {int(class_counts[index]):,} | "
-            f"Weight: {weights[index].item():.4f}"
+            f"{name}: "
+            f"Count={int(class_counts[index])}, "
+            f"Weight={weights[index].item():.4f}"
         )
 
     return weights.to(device)
 
-
-# Evaluate model predictions.
 def evaluate_model(model, test_loader, y_test, device):
 
     model.eval()
@@ -97,48 +95,87 @@ def evaluate_model(model, test_loader, y_test, device):
 
     y_pred = torch.cat(predictions)
 
-    # Overall accuracy
-    accuracy = (
-        (y_pred == y_test).float().mean().item()
+    # Convert tensors into NumPy arrays.
+    y_true_np = y_test.cpu().numpy()
+    y_pred_np = y_pred.numpy()
+
+    # Overall accuracy.
+    accuracy = accuracy_score(
+        y_true_np,
+        y_pred_np
     ) * 100
+
+    # Balanced accuracy.
+    balanced_accuracy = balanced_accuracy_score(
+        y_true_np,
+        y_pred_np
+    ) * 100
+
+    # Precision, recall, F1 and support for every class.
+    precision, recall, f1, support = precision_recall_fscore_support(
+        y_true_np,
+        y_pred_np,
+        labels=list(range(len(CLASS_NAMES))),
+        zero_division=0
+    )
+
+    # Overall macro metrics.
+    macro_precision, macro_recall, macro_f1, _ = (
+        precision_recall_fscore_support(
+            y_true_np,
+            y_pred_np,
+            average="macro",
+            zero_division=0
+        )
+    )
+
+    # Weighted F1 accounts for the number of records per class.
+    weighted_f1 = precision_recall_fscore_support(
+        y_true_np,
+        y_pred_np,
+        average="weighted",
+        zero_division=0
+    )[2]
 
     throughput = len(y_test) / max(inference_time, 1e-6)
 
-    print("\nEvaluation Results")
+    print("\nOverall Evaluation Results")
 
-    print(f"Test Accuracy: {accuracy:.2f}%")
+    print(f"Accuracy: {accuracy:.2f}%")
+    print(f"Balanced Accuracy: {balanced_accuracy:.2f}%")
+    print(f"Macro Precision: {macro_precision * 100:.2f}%")
+    print(f"Macro Recall: {macro_recall * 100:.2f}%")
+    print(f"Macro F1-Score: {macro_f1 * 100:.2f}%")
+    print(f"Weighted F1-Score: {weighted_f1 * 100:.2f}%")
+
     print(f"Inference Time: {inference_time:.4f} seconds")
     print(f"Throughput: {throughput:,.0f} flows/second")
 
-    # Class-wise accuracy
-    print("\nClass-wise Accuracy")
+    # Display individual class results.
+    print("\nClass-wise Evaluation")
 
     for index, class_name in enumerate(CLASS_NAMES):
 
-        mask = y_test == index
-        count = int(mask.sum().item())
-
-        if count > 0:
-
-            class_accuracy = (
-                (y_pred[mask] == y_test[mask])
-                .float()
-                .mean()
-                .item()
-            ) * 100
-
-            print(
-                f"{class_name:<15} "
-                f"{class_accuracy:.2f}% "
-                f"({count:,} records)"
-            )
+        print(
+            f"{class_name:<15} "
+            f"Precision: {precision[index] * 100:.2f}% | "
+            f"Recall: {recall[index] * 100:.2f}% | "
+            f"F1: {f1[index] * 100:.2f}% | "
+            f"Records: {support[index]:,}"
+        )
 
     return {
         "predictions": y_pred,
         "accuracy": accuracy,
+        "balanced_accuracy": balanced_accuracy,
+        "macro_precision": macro_precision * 100,
+        "macro_recall": macro_recall * 100,
+        "macro_f1": macro_f1 * 100,
+        "weighted_f1": weighted_f1 * 100,
         "inference_time": inference_time,
         "throughput": throughput
     }
+
 
 
 # Train and benchmark the model on one device.
@@ -296,11 +333,10 @@ def train_and_benchmark(
     print("\nTraining and evaluation completed.")
 
     return {
-        "model": model,
-        "params": parameter_count,
-        "train_seconds": training_time,
-        "infer_seconds": results["inference_time"],
-        "throughput": results["throughput"],
-        "accuracy": results["accuracy"],
-        "predictions": results["predictions"]
+        "balanced_accuracy": results["balanced_accuracy"],
+"macro_precision": results["macro_precision"],
+"macro_recall": results["macro_recall"],
+"macro_f1": results["macro_f1"],
+"weighted_f1": results["weighted_f1"],
+        
     }
